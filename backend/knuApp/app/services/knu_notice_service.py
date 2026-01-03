@@ -6,6 +6,8 @@ from urllib.parse import urljoin
 from app.core.config import BASE, LIST_URL, INFO_URL
 from app.core.http import fetch_html
 from app.utils.dedupe import dedupe_by_url
+from sqlalchemy.dialects.postgresql import insert
+from app.models.notice import Notice  # 이 줄을 추가하세요
 
 # 목록 페이지 HTML → 공지 제목 + 상세URL 리스트 만들기(중복 제거 포함)
 async def get_notice_list(searchMenuSeq: int = 0):
@@ -77,3 +79,25 @@ async def get_notice_detail(detail_url: str):
 
     # 최종 반환
     return {"title": title, "content": content, "files": files}
+
+
+async def save_notices_to_db(db, notice_list, category_id):
+    for n in notice_list:
+        # PostgreSQL의 ON CONFLICT(article_id) DO UPDATE 사용
+        stmt = insert(Notice).values(
+            article_id=n.article_id,
+            title=n.title,
+            body=n.body,
+            url=n.url,
+            posted_at=n.posted_at,
+            category_id=category_id
+        ).on_conflict_do_update(
+            index_elements=['article_id'],
+            set_={
+                "title": n.title,
+                "body": n.body,
+                "posted_at": n.posted_at
+            }
+        )
+        await db.execute(stmt)
+    await db.commit()
