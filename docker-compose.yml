@@ -1,0 +1,19 @@
+version: '3.8'
+services:
+  db:
+    image: postgres:15
+    container_name: knu-db
+    environment:
+      POSTGRES_USER: knuuser
+      POSTGRES_PASSWORD: knupassword
+      POSTGRES_DB: knudb
+    ports:
+      - "5432:5432"
+
+  backend:
+    build: ./knu-notice-server
+    ports:
+      - "8000:8000"
+    env_file: ./knu-notice-server/.env
+    depends_on:
+      - db
